@@ -1,0 +1,61 @@
+
+name: Build CARDAS Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'CARDAS_v1_0_Production_East_New_Britain.zip'
+      - '.github/workflows/build-android.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Extract CARDAS source
+        run: |
+          unzip -q CARDAS_v1_0_Production_East_New_Britain.zip -d extracted
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/extracted/CARDAS_v1_0_Production" >> "$GITHUB_ENV"
+          test -f extracted/CARDAS_v1_0_Production/pubspec.yaml
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files
+        working-directory: extracted/CARDAS_v1_0_Production
+        run: flutter create . --platforms=android
+
+      - name: Get dependencies
+        working-directory: extracted/CARDAS_v1_0_Production
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: extracted/CARDAS_v1_0_Production
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CARDAS-Android-APK
+          path: extracted/CARDAS_v1_0_Production/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          
